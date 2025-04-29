@@ -3,7 +3,7 @@
 import React from "react"
 
 import { useState, useCallback, useMemo } from "react"
-import { Search, SlidersHorizontal, Zap, Clock, Hash, RefreshCw, X } from "lucide-react"
+import { Search, SlidersHorizontal, Zap, Clock, Hash, RefreshCw, X, ArrowUpDown, SortAsc, SortDesc } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -14,6 +14,9 @@ import {
   DropdownMenuContent,
   DropdownMenuCheckboxItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
+  DropdownMenuItem,
 } from "@/components/ui/dropdown-menu"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ModelDetails } from "@/components/model-details"
@@ -147,6 +150,15 @@ export function ModelBrowser() {
   const [isFiltersOpen, setIsFiltersOpen] = useState(false)
   const isMobile = useMediaQuery("(max-width: 768px)")
 
+  // Add these new state variables after the existing state declarations
+  const [sortBy, setSortBy] = useState<string>("none")
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc")
+  const [capabilityFilters, setCapabilityFilters] = useState({
+    inputModalities: new Set<string>(),
+    outputModalities: new Set<string>(),
+    supportedParameters: new Set<string>(),
+  })
+
   // Use the custom hook for models with caching
   const { models, isLoading, isRefreshing, error, cacheStatus, refreshModels } = useModels()
 
@@ -156,14 +168,38 @@ export function ModelBrowser() {
     return [...new Set(models.map((model) => getProvider(model.id)))]
   }, [models])
 
-  // Filter models based on search and filters - memoized for performance
+  // Add these new memoized values after the providers useMemo
+  // Get unique capabilities for filtering
+  const capabilities = useMemo(() => {
+    if (!models) return { inputModalities: [], outputModalities: [], supportedParameters: [] }
+
+    const inputModalities = new Set<string>()
+    const outputModalities = new Set<string>()
+    const supportedParameters = new Set<string>()
+
+    models.forEach((model) => {
+      model.architecture.input_modalities.forEach((modality) => inputModalities.add(modality))
+      model.architecture.output_modalities.forEach((modality) => outputModalities.add(modality))
+      model.supported_parameters.forEach((param) => supportedParameters.add(param))
+    })
+
+    return {
+      inputModalities: Array.from(inputModalities).sort(),
+      outputModalities: Array.from(outputModalities).sort(),
+      supportedParameters: Array.from(supportedParameters).sort(),
+    }
+  }, [models])
+
+  // Update the filteredModels useMemo to include sorting and capability filtering
+  // Replace the existing filteredModels useMemo with this updated version
   const filteredModels = useMemo(() => {
     if (!models) return []
 
     // Create a search index for faster lookups
     const searchTerms = debouncedSearchQuery.toLowerCase().split(/\s+/).filter(Boolean)
 
-    return models.filter((model) => {
+    // Filter models
+    let result = models.filter((model) => {
       // Skip filtering if no search terms
       const matchesSearch =
         searchTerms.length === 0 ||
@@ -180,9 +216,55 @@ export function ModelBrowser() {
       // Provider filter
       const matchesProvider = filters.providers.size === 0 || filters.providers.has(getProvider(model.id))
 
-      return matchesSearch && matchesFree && matchesProvider
+      // Capability filters
+      const matchesInputModalities =
+        capabilityFilters.inputModalities.size === 0 ||
+        model.architecture.input_modalities.some((modality) => capabilityFilters.inputModalities.has(modality))
+
+      const matchesOutputModalities =
+        capabilityFilters.outputModalities.size === 0 ||
+        model.architecture.output_modalities.some((modality) => capabilityFilters.outputModalities.has(modality))
+
+      const matchesSupportedParameters =
+        capabilityFilters.supportedParameters.size === 0 ||
+        model.supported_parameters.some((param) => capabilityFilters.supportedParameters.has(param))
+
+      return (
+        matchesSearch &&
+        matchesFree &&
+        matchesProvider &&
+        matchesInputModalities &&
+        matchesOutputModalities &&
+        matchesSupportedParameters
+      )
     })
-  }, [models, debouncedSearchQuery, filters])
+
+    // Sort models
+    if (sortBy !== "none") {
+      result = [...result].sort((a, b) => {
+        let comparison = 0
+
+        switch (sortBy) {
+          case "date":
+            comparison = a.created - b.created
+            break
+          case "price":
+            comparison = Number.parseFloat(a.pricing.completion) - Number.parseFloat(b.pricing.completion)
+            break
+          case "context":
+            comparison = a.context_length - b.context_length
+            break
+          case "name":
+            comparison = a.name.localeCompare(b.name)
+            break
+        }
+
+        return sortOrder === "asc" ? comparison : -comparison
+      })
+    }
+
+    return result
+  }, [models, debouncedSearchQuery, filters, capabilityFilters, sortBy, sortOrder])
 
   // Handle provider filter toggle - memoized callback
   const toggleProviderFilter = useCallback((provider: string) => {
@@ -196,6 +278,22 @@ export function ModelBrowser() {
       return { ...prev, providers: newProviders }
     })
   }, [])
+
+  // Add a toggle capability filter function
+  const toggleCapabilityFilter = useCallback(
+    (type: "inputModalities" | "outputModalities" | "supportedParameters", value: string) => {
+      setCapabilityFilters((prev) => {
+        const newFilters = new Set(prev[type])
+        if (newFilters.has(value)) {
+          newFilters.delete(value)
+        } else {
+          newFilters.add(value)
+        }
+        return { ...prev, [type]: newFilters }
+      })
+    },
+    [],
+  )
 
   // Handle model selection for details view - memoized callback
   const handleModelSelect = useCallback((model: Model) => {
@@ -217,13 +315,34 @@ export function ModelBrowser() {
     setSearchInputValue("")
   }, [])
 
-  // Clear all filters
+  // Update the clearFilters function to also clear capability filters
+  // Replace the existing clearFilters function with this updated version
   const clearFilters = useCallback(() => {
     setFilters({
       freeOnly: false,
       providers: new Set<string>(),
     })
+    setCapabilityFilters({
+      inputModalities: new Set<string>(),
+      outputModalities: new Set<string>(),
+      supportedParameters: new Set<string>(),
+    })
   }, [])
+
+  // Add a function to handle sorting changes
+  const handleSortChange = useCallback(
+    (newSortBy: string) => {
+      if (sortBy === newSortBy) {
+        // Toggle sort order if clicking the same sort option
+        setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"))
+      } else {
+        // Set new sort option with default desc order
+        setSortBy(newSortBy)
+        setSortOrder("desc")
+      }
+    },
+    [sortBy],
+  )
 
   if (error && !models) {
     return (
@@ -276,26 +395,35 @@ export function ModelBrowser() {
     )
   }
 
-  // Render filters for mobile
+  // Update the renderMobileFilters function to include capability filters
+  // Replace the existing renderMobileFilters function with this updated version
   const renderMobileFilters = () => (
     <Sheet open={isFiltersOpen} onOpenChange={setIsFiltersOpen}>
       <SheetTrigger asChild>
         <Button variant="outline" className="flex gap-2">
           <SlidersHorizontal className="h-4 w-4" />
           <span>Filters</span>
-          {(filters.freeOnly || filters.providers.size > 0) && (
+          {(filters.freeOnly ||
+            filters.providers.size > 0 ||
+            capabilityFilters.inputModalities.size > 0 ||
+            capabilityFilters.outputModalities.size > 0 ||
+            capabilityFilters.supportedParameters.size > 0) && (
             <Badge variant="secondary" className="ml-1">
-              {filters.providers.size + (filters.freeOnly ? 1 : 0)}
+              {filters.providers.size +
+                (filters.freeOnly ? 1 : 0) +
+                capabilityFilters.inputModalities.size +
+                capabilityFilters.outputModalities.size +
+                capabilityFilters.supportedParameters.size}
             </Badge>
           )}
         </Button>
       </SheetTrigger>
-      <SheetContent side="bottom" className="h-[80vh]">
+      <SheetContent side="bottom" className="h-[80vh] overflow-y-auto">
         <SheetHeader>
           <SheetTitle>Filters</SheetTitle>
-          <SheetDescription>Filter models by provider and other criteria</SheetDescription>
+          <SheetDescription>Filter models by provider and capabilities</SheetDescription>
         </SheetHeader>
-        <div className="py-4">
+        <div className="py-4 space-y-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-medium">Free models only</h3>
             <Button
@@ -324,7 +452,68 @@ export function ModelBrowser() {
             </div>
           </div>
 
-          {(filters.freeOnly || filters.providers.size > 0) && (
+          {capabilities.inputModalities.length > 0 && (
+            <div className="mb-2">
+              <h3 className="text-sm font-medium mb-2">Input Modalities</h3>
+              <div className="grid grid-cols-2 gap-2">
+                {capabilities.inputModalities.map((modality) => (
+                  <Button
+                    key={modality}
+                    variant={capabilityFilters.inputModalities.has(modality) ? "default" : "outline"}
+                    size="sm"
+                    className="justify-start"
+                    onClick={() => toggleCapabilityFilter("inputModalities", modality)}
+                  >
+                    {modality}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {capabilities.outputModalities.length > 0 && (
+            <div className="mb-2">
+              <h3 className="text-sm font-medium mb-2">Output Modalities</h3>
+              <div className="grid grid-cols-2 gap-2">
+                {capabilities.outputModalities.map((modality) => (
+                  <Button
+                    key={modality}
+                    variant={capabilityFilters.outputModalities.has(modality) ? "default" : "outline"}
+                    size="sm"
+                    className="justify-start"
+                    onClick={() => toggleCapabilityFilter("outputModalities", modality)}
+                  >
+                    {modality}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {capabilities.supportedParameters.length > 0 && (
+            <div className="mb-2">
+              <h3 className="text-sm font-medium mb-2">Supported Features</h3>
+              <div className="grid grid-cols-2 gap-2">
+                {capabilities.supportedParameters.map((param) => (
+                  <Button
+                    key={param}
+                    variant={capabilityFilters.supportedParameters.has(param) ? "default" : "outline"}
+                    size="sm"
+                    className="justify-start"
+                    onClick={() => toggleCapabilityFilter("supportedParameters", param)}
+                  >
+                    {param}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {(filters.freeOnly ||
+            filters.providers.size > 0 ||
+            capabilityFilters.inputModalities.size > 0 ||
+            capabilityFilters.outputModalities.size > 0 ||
+            capabilityFilters.supportedParameters.size > 0) && (
             <Button variant="ghost" className="mt-4 w-full" onClick={clearFilters}>
               Clear all filters
             </Button>
@@ -334,16 +523,25 @@ export function ModelBrowser() {
     </Sheet>
   )
 
-  // Render filters for desktop
+  // Update the renderDesktopFilters function to include capability filters
+  // Replace the existing renderDesktopFilters function with this updated version
   const renderDesktopFilters = () => (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="outline" className="flex gap-2">
           <SlidersHorizontal className="h-4 w-4" />
           <span>Filters</span>
-          {(filters.freeOnly || filters.providers.size > 0) && (
+          {(filters.freeOnly ||
+            filters.providers.size > 0 ||
+            capabilityFilters.inputModalities.size > 0 ||
+            capabilityFilters.outputModalities.size > 0 ||
+            capabilityFilters.supportedParameters.size > 0) && (
             <Badge variant="secondary" className="ml-1">
-              {filters.providers.size + (filters.freeOnly ? 1 : 0)}
+              {filters.providers.size +
+                (filters.freeOnly ? 1 : 0) +
+                capabilityFilters.inputModalities.size +
+                capabilityFilters.outputModalities.size +
+                capabilityFilters.supportedParameters.size}
             </Badge>
           )}
         </Button>
@@ -356,7 +554,8 @@ export function ModelBrowser() {
           Free models only
         </DropdownMenuCheckboxItem>
 
-        <div className="px-2 py-1.5 text-sm font-semibold">Providers</div>
+        <DropdownMenuSeparator />
+        <DropdownMenuLabel>Providers</DropdownMenuLabel>
         {providers.map((provider) => (
           <DropdownMenuCheckboxItem
             key={provider}
@@ -367,7 +566,59 @@ export function ModelBrowser() {
           </DropdownMenuCheckboxItem>
         ))}
 
-        {(filters.freeOnly || filters.providers.size > 0) && (
+        {capabilities.inputModalities.length > 0 && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel>Input Modalities</DropdownMenuLabel>
+            {capabilities.inputModalities.map((modality) => (
+              <DropdownMenuCheckboxItem
+                key={modality}
+                checked={capabilityFilters.inputModalities.has(modality)}
+                onCheckedChange={() => toggleCapabilityFilter("inputModalities", modality)}
+              >
+                {modality}
+              </DropdownMenuCheckboxItem>
+            ))}
+          </>
+        )}
+
+        {capabilities.outputModalities.length > 0 && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel>Output Modalities</DropdownMenuLabel>
+            {capabilities.outputModalities.map((modality) => (
+              <DropdownMenuCheckboxItem
+                key={modality}
+                checked={capabilityFilters.outputModalities.has(modality)}
+                onCheckedChange={() => toggleCapabilityFilter("outputModalities", modality)}
+              >
+                {modality}
+              </DropdownMenuCheckboxItem>
+            ))}
+          </>
+        )}
+
+        {capabilities.supportedParameters.length > 0 && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel>Supported Features</DropdownMenuLabel>
+            {capabilities.supportedParameters.map((param) => (
+              <DropdownMenuCheckboxItem
+                key={param}
+                checked={capabilityFilters.supportedParameters.has(param)}
+                onCheckedChange={() => toggleCapabilityFilter("supportedParameters", param)}
+              >
+                {param}
+              </DropdownMenuCheckboxItem>
+            ))}
+          </>
+        )}
+
+        {(filters.freeOnly ||
+          filters.providers.size > 0 ||
+          capabilityFilters.inputModalities.size > 0 ||
+          capabilityFilters.outputModalities.size > 0 ||
+          capabilityFilters.supportedParameters.size > 0) && (
           <div className="px-2 py-1.5">
             <Button variant="ghost" size="sm" className="w-full" onClick={clearFilters}>
               Clear all filters
@@ -378,6 +629,48 @@ export function ModelBrowser() {
     </DropdownMenu>
   )
 
+  // Add a new function to render the sort dropdown
+  const renderSortDropdown = () => (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline" className="flex gap-2">
+          <ArrowUpDown className="h-4 w-4" />
+          <span>Sort</span>
+          {sortBy !== "none" && (
+            <Badge variant="secondary" className="ml-1">
+              {sortOrder === "asc" ? <SortAsc className="h-3 w-3" /> : <SortDesc className="h-3 w-3" />}
+            </Badge>
+          )}
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-56">
+        <DropdownMenuItem onClick={() => handleSortChange("date")} className="flex justify-between">
+          <span>Release Date</span>
+          {sortBy === "date" &&
+            (sortOrder === "desc" ? <SortDesc className="h-4 w-4" /> : <SortAsc className="h-4 w-4" />)}
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => handleSortChange("price")} className="flex justify-between">
+          <span>Price</span>
+          {sortBy === "price" &&
+            (sortOrder === "desc" ? <SortDesc className="h-4 w-4" /> : <SortAsc className="h-4 w-4" />)}
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => handleSortChange("context")} className="flex justify-between">
+          <span>Context Length</span>
+          {sortBy === "context" &&
+            (sortOrder === "desc" ? <SortDesc className="h-4 w-4" /> : <SortAsc className="h-4 w-4" />)}
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => handleSortChange("name")} className="flex justify-between">
+          <span>Name</span>
+          {sortBy === "name" &&
+            (sortOrder === "desc" ? <SortDesc className="h-4 w-4" /> : <SortAsc className="h-4 w-4" />)}
+        </DropdownMenuItem>
+        {sortBy !== "none" && <DropdownMenuItem onClick={() => setSortBy("none")}>Clear Sorting</DropdownMenuItem>}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+
+  // Update the div that contains the filters to include the sort dropdown
+  // Find the div with className="flex gap-2 w-full justify-between" and replace it with:
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4">
@@ -403,6 +696,7 @@ export function ModelBrowser() {
         <div className="flex gap-2 w-full justify-between">
           <div className="flex gap-2">
             {isMobile ? renderMobileFilters() : renderDesktopFilters()}
+            {renderSortDropdown()}
 
             <TooltipProvider>
               <Tooltip>

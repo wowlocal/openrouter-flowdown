@@ -270,7 +270,7 @@ ${capabilities.map((cap) => `		<string>${cap}</string>`).join("\n")}
                       <span className="text-sm text-muted-foreground">Input Modalities</span>
                       <div className="flex flex-wrap gap-1">
                         {model.architecture.input_modalities.map((modality) => (
-                          <Badge key={modality} variant="outline">
+                          <Badge key={modality} variant="outline" className="capitalize">
                             {modality}
                           </Badge>
                         ))}
@@ -280,7 +280,7 @@ ${capabilities.map((cap) => `		<string>${cap}</string>`).join("\n")}
                       <span className="text-sm text-muted-foreground">Output Modalities</span>
                       <div className="flex flex-wrap gap-1">
                         {model.architecture.output_modalities.map((modality) => (
-                          <Badge key={modality} variant="outline">
+                          <Badge key={modality} variant="outline" className="capitalize">
                             {modality}
                           </Badge>
                         ))}
