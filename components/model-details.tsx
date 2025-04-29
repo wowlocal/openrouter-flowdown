@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ExportConfigModal } from "@/components/export-config-modal"
 import type { Model } from "@/hooks/use-models"
+import { useMediaQuery } from "@/hooks/use-media-query"
 
 // Helper function to format pricing
 const formatPrice = (price: string): string => {
@@ -60,6 +61,7 @@ interface ModelDetailsProps {
 
 export function ModelDetails({ model, onBack }: ModelDetailsProps) {
   const [isExportModalOpen, setIsExportModalOpen] = useState(false)
+  const isMobile = useMediaQuery("(max-width: 768px)")
 
   // Generate code sample for the model
   const generateCodeSample = (modelId: string) => {
@@ -150,9 +152,9 @@ ${capabilities.map((cap) => `		<string>${cap}</string>`).join("\n")}
   )
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row gap-4 md:items-center justify-between">
-        <Button variant="ghost" onClick={onBack} className="flex items-center gap-2 -ml-2 mb-4 md:mb-0">
+    <div className="space-y-6 pb-20">
+      <div className="flex flex-col md:flex-row gap-4 md:items-center justify-between sticky top-0 z-10 bg-background pt-2 pb-2 border-b">
+        <Button variant="ghost" onClick={onBack} className="flex items-center gap-2 -ml-2">
           <ArrowLeft className="h-4 w-4" />
           Back to models
         </Button>
@@ -165,7 +167,7 @@ ${capabilities.map((cap) => `		<string>${cap}</string>`).join("\n")}
 
       <div className="flex flex-col md:flex-row gap-4 md:items-center justify-between">
         <div>
-          <div className="flex items-center gap-2 mb-2">
+          <div className="flex flex-wrap items-center gap-2 mb-2">
             <Badge variant="outline">{getProvider(model.id)}</Badge>
             {isFree(model) && (
               <Badge
@@ -184,13 +186,13 @@ ${capabilities.map((cap) => `		<string>${cap}</string>`).join("\n")}
               </Badge>
             )}
           </div>
-          <h1 className="text-3xl font-bold">{getModelName(model.name)}</h1>
-          <p className="text-sm text-muted-foreground mt-1">{model.id}</p>
+          <h1 className="text-2xl md:text-3xl font-bold break-words">{getModelName(model.name)}</h1>
+          <p className="text-sm text-muted-foreground mt-1 break-all">{model.id}</p>
         </div>
       </div>
 
-      <Tabs defaultValue="overview">
-        <TabsList className="grid w-full grid-cols-3 md:w-auto md:inline-grid">
+      <Tabs defaultValue="overview" className="w-full">
+        <TabsList className={`${isMobile ? "w-full" : ""} grid grid-cols-3`}>
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="pricing">Pricing</TabsTrigger>
           <TabsTrigger value="integration">Integration</TabsTrigger>
@@ -254,19 +256,19 @@ ${capabilities.map((cap) => `		<string>${cap}</string>`).join("\n")}
                 <h3 className="text-sm font-medium mb-2">Architecture</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <div className="flex justify-between">
+                    <div className="flex justify-between flex-wrap gap-2">
                       <span className="text-sm text-muted-foreground">Tokenizer</span>
                       <span className="text-sm font-medium">{model.architecture.tokenizer || "Not specified"}</span>
                     </div>
-                    <div className="flex justify-between">
+                    <div className="flex justify-between flex-wrap gap-2">
                       <span className="text-sm text-muted-foreground">Instruct Type</span>
                       <span className="text-sm font-medium">{model.architecture.instruct_type || "Not specified"}</span>
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <div className="flex justify-between">
+                    <div className="flex justify-between flex-wrap gap-2">
                       <span className="text-sm text-muted-foreground">Input Modalities</span>
-                      <div className="flex gap-1">
+                      <div className="flex flex-wrap gap-1">
                         {model.architecture.input_modalities.map((modality) => (
                           <Badge key={modality} variant="outline">
                             {modality}
@@ -274,9 +276,9 @@ ${capabilities.map((cap) => `		<string>${cap}</string>`).join("\n")}
                         ))}
                       </div>
                     </div>
-                    <div className="flex justify-between">
+                    <div className="flex justify-between flex-wrap gap-2">
                       <span className="text-sm text-muted-foreground">Output Modalities</span>
-                      <div className="flex gap-1">
+                      <div className="flex flex-wrap gap-1">
                         {model.architecture.output_modalities.map((modality) => (
                           <Badge key={modality} variant="outline">
                             {modality}
@@ -492,7 +494,7 @@ ${capabilities.map((cap) => `		<string>${cap}</string>`).join("\n")}
                   {model.supported_parameters.map((param) => (
                     <div key={param} className="flex items-center gap-2 p-3 border rounded-lg">
                       <Check className="h-4 w-4 text-green-500" />
-                      <span className="font-mono text-sm">{param}</span>
+                      <span className="font-mono text-sm break-all">{param}</span>
                     </div>
                   ))}
                 </div>

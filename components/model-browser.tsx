@@ -3,7 +3,7 @@
 import React from "react"
 
 import { useState, useCallback, useMemo } from "react"
-import { Search, SlidersHorizontal, Zap, Clock, Hash, RefreshCw } from "lucide-react"
+import { Search, SlidersHorizontal, Zap, Clock, Hash, RefreshCw, X } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -21,6 +21,8 @@ import { useDebounce } from "@/hooks/use-debounce"
 import { VirtualList } from "@/components/virtual-list"
 import { useModels, type Model } from "@/hooks/use-models"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { useMediaQuery } from "@/hooks/use-media-query"
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 
 // Helper function to format pricing
 const formatPrice = (price: string): string => {
@@ -98,7 +100,7 @@ const ModelListItem = React.memo(({ model, onSelect }: { model: Model; onSelect:
       onClick={() => onSelect(model)}
     >
       <div className="space-y-1 flex-1">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <h3 className="font-medium">{getModelName(model.name)}</h3>
           <Badge variant="outline" size="sm">
             {getProvider(model.id)}
@@ -142,6 +144,8 @@ export function ModelBrowser() {
     freeOnly: false,
     providers: new Set<string>(),
   })
+  const [isFiltersOpen, setIsFiltersOpen] = useState(false)
+  const isMobile = useMediaQuery("(max-width: 768px)")
 
   // Use the custom hook for models with caching
   const { models, isLoading, isRefreshing, error, cacheStatus, refreshModels } = useModels()
@@ -208,6 +212,19 @@ export function ModelBrowser() {
     setSearchInputValue(e.target.value)
   }, [])
 
+  // Clear search input
+  const clearSearch = useCallback(() => {
+    setSearchInputValue("")
+  }, [])
+
+  // Clear all filters
+  const clearFilters = useCallback(() => {
+    setFilters({
+      freeOnly: false,
+      providers: new Set<string>(),
+    })
+  }, [])
+
   if (error && !models) {
     return (
       <div className="p-8 text-center">
@@ -222,14 +239,17 @@ export function ModelBrowser() {
     return <ModelDetails model={selectedModel} onBack={handleBack} />
   }
 
+  // Determine grid columns based on screen size
+  const itemsPerRow = isMobile ? 1 : window.innerWidth >= 1024 ? 3 : 2
+
   // Render grid view with virtualization for better performance
   const renderGridView = () => {
     return (
       <VirtualList
         items={filteredModels}
-        height={800}
+        height={isMobile ? window.innerHeight * 0.7 : 800}
         itemHeight={320}
-        itemsPerRow={window.innerWidth >= 1024 ? 3 : window.innerWidth >= 768 ? 2 : 1}
+        itemsPerRow={itemsPerRow}
         renderItem={(model) => (
           <div className="p-2 h-full">
             <ModelCard model={model} onSelect={handleModelSelect} />
@@ -244,8 +264,8 @@ export function ModelBrowser() {
     return (
       <VirtualList
         items={filteredModels}
-        height={800}
-        itemHeight={100}
+        height={isMobile ? window.innerHeight * 0.7 : 800}
+        itemHeight={isMobile ? 140 : 100}
         itemsPerRow={1}
         renderItem={(model) => (
           <div className="py-1">
@@ -256,67 +276,154 @@ export function ModelBrowser() {
     )
   }
 
+  // Render filters for mobile
+  const renderMobileFilters = () => (
+    <Sheet open={isFiltersOpen} onOpenChange={setIsFiltersOpen}>
+      <SheetTrigger asChild>
+        <Button variant="outline" className="flex gap-2">
+          <SlidersHorizontal className="h-4 w-4" />
+          <span>Filters</span>
+          {(filters.freeOnly || filters.providers.size > 0) && (
+            <Badge variant="secondary" className="ml-1">
+              {filters.providers.size + (filters.freeOnly ? 1 : 0)}
+            </Badge>
+          )}
+        </Button>
+      </SheetTrigger>
+      <SheetContent side="bottom" className="h-[80vh]">
+        <SheetHeader>
+          <SheetTitle>Filters</SheetTitle>
+          <SheetDescription>Filter models by provider and other criteria</SheetDescription>
+        </SheetHeader>
+        <div className="py-4">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-medium">Free models only</h3>
+            <Button
+              variant={filters.freeOnly ? "default" : "outline"}
+              size="sm"
+              onClick={() => setFilters((prev) => ({ ...prev, freeOnly: !prev.freeOnly }))}
+            >
+              {filters.freeOnly ? "Enabled" : "Disabled"}
+            </Button>
+          </div>
+
+          <div className="mb-2">
+            <h3 className="text-sm font-medium mb-2">Providers</h3>
+            <div className="grid grid-cols-2 gap-2">
+              {providers.map((provider) => (
+                <Button
+                  key={provider}
+                  variant={filters.providers.has(provider) ? "default" : "outline"}
+                  size="sm"
+                  className="justify-start"
+                  onClick={() => toggleProviderFilter(provider)}
+                >
+                  {provider}
+                </Button>
+              ))}
+            </div>
+          </div>
+
+          {(filters.freeOnly || filters.providers.size > 0) && (
+            <Button variant="ghost" className="mt-4 w-full" onClick={clearFilters}>
+              Clear all filters
+            </Button>
+          )}
+        </div>
+      </SheetContent>
+    </Sheet>
+  )
+
+  // Render filters for desktop
+  const renderDesktopFilters = () => (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline" className="flex gap-2">
+          <SlidersHorizontal className="h-4 w-4" />
+          <span>Filters</span>
+          {(filters.freeOnly || filters.providers.size > 0) && (
+            <Badge variant="secondary" className="ml-1">
+              {filters.providers.size + (filters.freeOnly ? 1 : 0)}
+            </Badge>
+          )}
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-56">
+        <DropdownMenuCheckboxItem
+          checked={filters.freeOnly}
+          onCheckedChange={(checked) => setFilters((prev) => ({ ...prev, freeOnly: checked }))}
+        >
+          Free models only
+        </DropdownMenuCheckboxItem>
+
+        <div className="px-2 py-1.5 text-sm font-semibold">Providers</div>
+        {providers.map((provider) => (
+          <DropdownMenuCheckboxItem
+            key={provider}
+            checked={filters.providers.has(provider)}
+            onCheckedChange={() => toggleProviderFilter(provider)}
+          >
+            {provider}
+          </DropdownMenuCheckboxItem>
+        ))}
+
+        {(filters.freeOnly || filters.providers.size > 0) && (
+          <div className="px-2 py-1.5">
+            <Button variant="ghost" size="sm" className="w-full" onClick={clearFilters}>
+              Clear all filters
+            </Button>
+          </div>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-        <div className="relative w-full sm:w-96">
+      <div className="flex flex-col gap-4">
+        <div className="relative w-full">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search models..."
-            className="pl-8"
+            className="pl-8 pr-8"
             value={searchInputValue}
             onChange={handleSearchChange}
           />
+          {searchInputValue && (
+            <button
+              className="absolute right-2.5 top-2.5 text-muted-foreground hover:text-foreground"
+              onClick={clearSearch}
+              aria-label="Clear search"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
         </div>
 
-        <div className="flex gap-2 w-full sm:w-auto">
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={refreshModels}
-                  disabled={isRefreshing}
-                  className={isRefreshing ? "animate-spin" : ""}
-                >
-                  <RefreshCw className="h-4 w-4" />
-                  <span className="sr-only">Refresh models</span>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Refresh models (last updated: {cacheStatus})</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+        <div className="flex gap-2 w-full justify-between">
+          <div className="flex gap-2">
+            {isMobile ? renderMobileFilters() : renderDesktopFilters()}
 
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="flex gap-2">
-                <SlidersHorizontal className="h-4 w-4" />
-                <span>Filters</span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuCheckboxItem
-                checked={filters.freeOnly}
-                onCheckedChange={(checked) => setFilters((prev) => ({ ...prev, freeOnly: checked }))}
-              >
-                Free models only
-              </DropdownMenuCheckboxItem>
-
-              <div className="px-2 py-1.5 text-sm font-semibold">Providers</div>
-              {providers.map((provider) => (
-                <DropdownMenuCheckboxItem
-                  key={provider}
-                  checked={filters.providers.has(provider)}
-                  onCheckedChange={() => toggleProviderFilter(provider)}
-                >
-                  {provider}
-                </DropdownMenuCheckboxItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={refreshModels}
+                    disabled={isRefreshing}
+                    className={isRefreshing ? "animate-spin" : ""}
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                    <span className="sr-only">Refresh models</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Refresh models (last updated: {cacheStatus})</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
 
           <Tabs defaultValue="grid" className="w-auto" onValueChange={(v) => setView(v as "grid" | "list")}>
             <TabsList className="grid w-20 grid-cols-2">
@@ -398,6 +505,18 @@ export function ModelBrowser() {
       ) : (
         <div className="text-center p-8 border rounded-lg">
           <p className="text-muted-foreground">No models found matching your criteria</p>
+          {(searchInputValue || filters.freeOnly || filters.providers.size > 0) && (
+            <Button
+              variant="outline"
+              className="mt-4"
+              onClick={() => {
+                clearSearch()
+                clearFilters()
+              }}
+            >
+              Clear all filters
+            </Button>
+          )}
         </div>
       )}
     </div>

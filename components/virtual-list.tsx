@@ -1,8 +1,10 @@
 "use client"
 
 import type React from "react"
-
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState, useCallback } from "react"
+import { useMediaQuery } from "@/hooks/use-media-query"
+import { ChevronUp } from "lucide-react"
+import { Button } from "@/components/ui/button"
 
 interface VirtualListProps<T> {
   items: T[]
@@ -16,6 +18,11 @@ export function VirtualList<T>({ items, height, itemHeight, itemsPerRow, renderI
   const containerRef = useRef<HTMLDivElement>(null)
   const [scrollTop, setScrollTop] = useState(0)
   const [clientHeight, setClientHeight] = useState(height)
+  const [showScrollToTop, setShowScrollToTop] = useState(false)
+  const isMobile = useMediaQuery("(max-width: 768px)")
+
+  // Adjust height for mobile
+  const effectiveHeight = isMobile ? window.innerHeight * 0.7 : height
 
   // Calculate the total height of all items
   const rowCount = Math.ceil(items.length / itemsPerRow)
@@ -25,13 +32,28 @@ export function VirtualList<T>({ items, height, itemHeight, itemsPerRow, renderI
   const startIndex = Math.max(0, Math.floor(scrollTop / itemHeight) * itemsPerRow)
   const endIndex = Math.min(
     items.length,
-    Math.ceil((scrollTop + clientHeight) / itemHeight) * itemsPerRow + itemsPerRow,
+    Math.ceil((scrollTop + clientHeight) / itemHeight) * itemsPerRow + itemsPerRow * 2, // Add extra buffer for smoother scrolling
   )
 
-  // Handle scroll events
-  const handleScroll = () => {
+  // Handle scroll events with throttling for better performance
+  const handleScroll = useCallback(() => {
     if (containerRef.current) {
-      setScrollTop(containerRef.current.scrollTop)
+      requestAnimationFrame(() => {
+        if (containerRef.current) {
+          setScrollTop(containerRef.current.scrollTop)
+          setShowScrollToTop(containerRef.current.scrollTop > 300)
+        }
+      })
+    }
+  }, [])
+
+  // Scroll to top function
+  const scrollToTop = () => {
+    if (containerRef.current) {
+      containerRef.current.scrollTo({
+        top: 0,
+        behavior: "smooth",
+      })
     }
   }
 
@@ -54,26 +76,51 @@ export function VirtualList<T>({ items, height, itemHeight, itemsPerRow, renderI
   // Calculate the offset for the visible items
   const offsetY = Math.floor(startIndex / itemsPerRow) * itemHeight
 
+  // Determine grid columns based on screen size
+  const gridCols = isMobile ? 1 : itemsPerRow
+
   return (
-    <div ref={containerRef} style={{ height, overflow: "auto" }} onScroll={handleScroll} className="relative">
-      <div style={{ height: totalHeight, position: "relative" }}>
-        <div
-          style={{
-            position: "absolute",
-            top: offsetY,
-            left: 0,
-            right: 0,
-          }}
-        >
+    <div className="relative">
+      <div
+        ref={containerRef}
+        style={{ height: effectiveHeight, overflow: "auto" }}
+        onScroll={handleScroll}
+        className="relative scroll-smooth -webkit-overflow-scrolling-touch"
+      >
+        <div style={{ height: totalHeight, position: "relative" }}>
           <div
-            className={`grid grid-cols-1 md:grid-cols-${itemsPerRow === 2 ? "2" : itemsPerRow === 3 ? "3" : "1"} gap-4`}
+            style={{
+              position: "absolute",
+              top: offsetY,
+              left: 0,
+              right: 0,
+            }}
           >
-            {visibleItems.map((item, index) => (
-              <div key={startIndex + index}>{renderItem(item)}</div>
-            ))}
+            <div
+              className={`grid grid-cols-${gridCols} gap-4`}
+              style={{
+                gridTemplateColumns: `repeat(${gridCols}, minmax(0, 1fr))`,
+              }}
+            >
+              {visibleItems.map((item, index) => (
+                <div key={startIndex + index}>{renderItem(item)}</div>
+              ))}
+            </div>
           </div>
         </div>
       </div>
+
+      {showScrollToTop && (
+        <Button
+          variant="secondary"
+          size="icon"
+          className="fixed bottom-6 right-6 z-50 rounded-full shadow-lg"
+          onClick={scrollToTop}
+          aria-label="Scroll to top"
+        >
+          <ChevronUp className="h-5 w-5" />
+        </Button>
+      )}
     </div>
   )
 }
