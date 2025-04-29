@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import {
   Dialog,
   DialogContent,
@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { AlertCircle } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { OPENROUTER_API_KEY } from "@/components/settings-modal"
 
 interface ExportConfigModalProps {
   isOpen: boolean
@@ -27,6 +28,7 @@ export function ExportConfigModal({ isOpen, onClose, onExport, modelContextLengt
   const [token, setToken] = useState("")
   const [contextLength, setContextLength] = useState<string>(getClosestContextLength(modelContextLength).toString())
   const [showTokenWarning, setShowTokenWarning] = useState(false)
+  const [hasSavedToken, setHasSavedToken] = useState(false)
 
   // Get the closest allowed context length
   function getClosestContextLength(originalLength: number): number {
@@ -40,6 +42,21 @@ export function ExportConfigModal({ isOpen, onClose, onExport, modelContextLengt
     // If original is larger than all allowed values, return the largest allowed
     return allowedLengths[allowedLengths.length - 1]
   }
+
+  // Load saved token when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      const savedToken = localStorage.getItem(OPENROUTER_API_KEY)
+      if (savedToken) {
+        setToken(savedToken)
+        setHasSavedToken(true)
+      } else {
+        setHasSavedToken(false)
+      }
+      setContextLength(getClosestContextLength(modelContextLength).toString())
+      setShowTokenWarning(false)
+    }
+  }, [isOpen, modelContextLength])
 
   const handleExport = () => {
     if (!token.trim().startsWith("sk-or-")) {
@@ -57,7 +74,7 @@ export function ExportConfigModal({ isOpen, onClose, onExport, modelContextLengt
         <DialogHeader>
           <DialogTitle>Export Model Configuration</DialogTitle>
           <DialogDescription>
-            Create a configuration file for this model. You'll need your OpenRouter API token.
+            Create a configuration file for this model. {!hasSavedToken && "You'll need your OpenRouter API token."}
           </DialogDescription>
         </DialogHeader>
 
@@ -82,7 +99,13 @@ export function ExportConfigModal({ isOpen, onClose, onExport, modelContextLengt
                 setToken(e.target.value)
                 setShowTokenWarning(false)
               }}
+              type="password"
             />
+            {hasSavedToken && (
+              <p className="col-span-4 text-xs text-muted-foreground">
+                Using your saved API key. You can change it in Settings if needed.
+              </p>
+            )}
           </div>
 
           <div className="grid grid-cols-4 items-center gap-4">

@@ -1,7 +1,7 @@
 import type React from "react"
 import "@/app/globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
-import { ModeToggle } from "@/components/mode-toggle"
+import { Header } from "@/components/header"
 import { Providers } from "@/components/providers"
 import { Inter } from "next/font/google"
 import type { Metadata } from "next"
@@ -25,12 +25,7 @@ export default function RootLayout({
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
           <Providers>
             <div className="min-h-screen bg-background">
-              <header className="border-b">
-                <div className="container mx-auto py-4 px-4 flex justify-between items-center">
-                  <div className="font-semibold text-xl">OpenRouter Model Browser</div>
-                  <ModeToggle />
-                </div>
-              </header>
+              <Header />
               {children}
             </div>
           </Providers>
