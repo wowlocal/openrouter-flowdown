@@ -7,37 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ExportConfigModal } from "@/components/export-config-modal"
-
-// Define model type based on the API response
-type Model = {
-  id: string
-  name: string
-  created: number
-  description: string
-  context_length: number
-  architecture: {
-    modality: string
-    input_modalities: string[]
-    output_modalities: string[]
-    tokenizer: string
-    instruct_type: string | null
-  }
-  pricing: {
-    prompt: string
-    completion: string
-    request: string
-    image: string
-    web_search: string
-    internal_reasoning: string
-  }
-  top_provider: {
-    context_length: number
-    max_completion_tokens: number | null
-    is_moderated: boolean
-  }
-  per_request_limits: any
-  supported_parameters: string[]
-}
+import type { Model } from "@/hooks/use-models"
 
 // Helper function to format pricing
 const formatPrice = (price: string): string => {
@@ -159,11 +129,18 @@ ${capabilities.map((cap) => `		<string>${cap}</string>`).join("\n")}
 </plist>`
 
       // Create a blob and download the file
-      const blob = new Blob([plistContent], { type: "application/xml" })
+      const blob = new Blob([plistContent], { type: "application/x-plist" })
       const url = URL.createObjectURL(blob)
       const a = document.createElement("a")
       a.href = url
       a.download = `${model.id.replace(/\//g, "-")}-config.plist`
+
+      // Set the correct content type for property list files
+      if (navigator.userAgent.indexOf("Safari") !== -1 && navigator.userAgent.indexOf("Chrome") === -1) {
+        // Special handling for Safari which handles content types differently
+        a.setAttribute("type", "application/x-plist")
+      }
+
       document.body.appendChild(a)
       a.click()
       document.body.removeChild(a)

@@ -3,8 +3,7 @@
 import React from "react"
 
 import { useState, useCallback, useMemo } from "react"
-import { useQuery } from "@tanstack/react-query"
-import { Search, SlidersHorizontal, Zap, Clock, Hash } from "lucide-react"
+import { Search, SlidersHorizontal, Zap, Clock, Hash, RefreshCw } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -20,48 +19,8 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ModelDetails } from "@/components/model-details"
 import { useDebounce } from "@/hooks/use-debounce"
 import { VirtualList } from "@/components/virtual-list"
-
-// Define model type based on the API response
-type Model = {
-  id: string
-  name: string
-  created: number
-  description: string
-  context_length: number
-  architecture: {
-    modality: string
-    input_modalities: string[]
-    output_modalities: string[]
-    tokenizer: string
-    instruct_type: string | null
-  }
-  pricing: {
-    prompt: string
-    completion: string
-    request: string
-    image: string
-    web_search: string
-    internal_reasoning: string
-  }
-  top_provider: {
-    context_length: number
-    max_completion_tokens: number | null
-    is_moderated: boolean
-  }
-  per_request_limits: any
-  supported_parameters: string[]
-}
-
-type ModelsResponse = {
-  data: Model[]
-}
-
-// Function to fetch models from OpenRouter API
-const fetchModels = async (): Promise<Model[]> => {
-  const response = await fetch("https://openrouter.ai/api/v1/models")
-  const data: ModelsResponse = await response.json()
-  return data.data
-}
+import { useModels, type Model } from "@/hooks/use-models"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 // Helper function to format pricing
 const formatPrice = (price: string): string => {
@@ -184,17 +143,8 @@ export function ModelBrowser() {
     providers: new Set<string>(),
   })
 
-  // Fetch models data with optimized caching
-  const {
-    data: models,
-    isLoading,
-    error,
-  } = useQuery({
-    queryKey: ["openrouter-models"],
-    queryFn: fetchModels,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    cacheTime: 60 * 60 * 1000, // 1 hour
-  })
+  // Use the custom hook for models with caching
+  const { models, isLoading, isRefreshing, error, cacheStatus, refreshModels } = useModels()
 
   // Get unique providers for filtering - memoized to prevent recalculation
   const providers = useMemo(() => {
@@ -258,10 +208,11 @@ export function ModelBrowser() {
     setSearchInputValue(e.target.value)
   }, [])
 
-  if (error) {
+  if (error && !models) {
     return (
       <div className="p-8 text-center">
-        <p className="text-red-500">Error loading models. Please try again later.</p>
+        <p className="text-red-500 mb-4">Error loading models. Please try again later.</p>
+        <Button onClick={refreshModels}>Retry</Button>
       </div>
     )
   }
@@ -319,6 +270,26 @@ export function ModelBrowser() {
         </div>
 
         <div className="flex gap-2 w-full sm:w-auto">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={refreshModels}
+                  disabled={isRefreshing}
+                  className={isRefreshing ? "animate-spin" : ""}
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  <span className="sr-only">Refresh models</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Refresh models (last updated: {cacheStatus})</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" className="flex gap-2">
@@ -393,7 +364,7 @@ export function ModelBrowser() {
         </div>
       </div>
 
-      {isLoading ? (
+      {isLoading && !models ? (
         <div className={view === "grid" ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" : "space-y-4"}>
           {Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="border rounded-lg p-6 space-y-4">
@@ -410,9 +381,17 @@ export function ModelBrowser() {
         </div>
       ) : filteredModels.length > 0 ? (
         <>
-          <p className="text-sm text-muted-foreground">
-            Showing {filteredModels.length} of {models?.length} models
-          </p>
+          <div className="flex justify-between items-center">
+            <p className="text-sm text-muted-foreground">
+              Showing {filteredModels.length} of {models?.length} models
+            </p>
+            {isRefreshing && (
+              <p className="text-sm text-muted-foreground flex items-center gap-2">
+                <RefreshCw className="h-3 w-3 animate-spin" />
+                Refreshing...
+              </p>
+            )}
+          </div>
 
           {view === "grid" ? renderGridView() : renderListView()}
         </>
