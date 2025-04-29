@@ -6,7 +6,7 @@ export function useMediaQuery(query: string): boolean {
   const [matches, setMatches] = useState(false)
 
   useEffect(() => {
-    // Default to true on server to avoid hydration mismatch
+    // Default to false on server to avoid hydration mismatch
     if (typeof window === "undefined") {
       return
     }

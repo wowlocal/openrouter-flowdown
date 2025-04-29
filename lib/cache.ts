@@ -10,10 +10,15 @@ type CachedData<T> = {
 // Default cache expiration time (24 hours in milliseconds)
 const DEFAULT_CACHE_EXPIRY = 24 * 60 * 60 * 1000
 
+// Helper to check if we're in a browser environment
+const isBrowser = typeof window !== "undefined"
+
 /**
  * Store data in localStorage with expiration
  */
 export function setCache<T>(key: string, data: T, expiry = DEFAULT_CACHE_EXPIRY): void {
+  if (!isBrowser) return
+
   try {
     const item: CachedData<T> = {
       data,
@@ -30,6 +35,8 @@ export function setCache<T>(key: string, data: T, expiry = DEFAULT_CACHE_EXPIRY)
  * Get data from localStorage if it exists and is not expired
  */
 export function getCache<T>(key: string): T | null {
+  if (!isBrowser) return null
+
   try {
     const item = localStorage.getItem(key)
     if (!item) return null
@@ -61,6 +68,8 @@ export function hasValidCache(key: string): boolean {
  * Get cache age in milliseconds
  */
 export function getCacheAge(key: string): number | null {
+  if (!isBrowser) return null
+
   try {
     const item = localStorage.getItem(key)
     if (!item) return null
@@ -77,6 +86,8 @@ export function getCacheAge(key: string): number | null {
  * Clear specific cache
  */
 export function clearCache(key: string): void {
+  if (!isBrowser) return
+
   localStorage.removeItem(key)
 }
 

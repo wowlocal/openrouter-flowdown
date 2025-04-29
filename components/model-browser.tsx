@@ -2,7 +2,7 @@
 
 import React from "react"
 
-import { useState, useCallback, useMemo } from "react"
+import { useState, useCallback, useMemo, useEffect } from "react"
 import { Search, SlidersHorizontal, Zap, Clock, Hash, RefreshCw, X, ArrowUpDown, SortAsc, SortDesc } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -149,6 +149,25 @@ export function ModelBrowser() {
   })
   const [isFiltersOpen, setIsFiltersOpen] = useState(false)
   const isMobile = useMediaQuery("(max-width: 768px)")
+  const [windowDimensions, setWindowDimensions] = useState({ width: 0, height: 0 })
+
+  // Initialize window dimensions on client side
+  useEffect(() => {
+    setWindowDimensions({
+      width: window.innerWidth,
+      height: window.innerHeight,
+    })
+
+    const handleResize = () => {
+      setWindowDimensions({
+        width: window.innerWidth,
+        height: window.innerHeight,
+      })
+    }
+
+    window.addEventListener("resize", handleResize)
+    return () => window.removeEventListener("resize", handleResize)
+  }, [])
 
   // Add these new state variables after the existing state declarations
   const [sortBy, setSortBy] = useState<string>("none")
@@ -359,14 +378,14 @@ export function ModelBrowser() {
   }
 
   // Determine grid columns based on screen size
-  const itemsPerRow = isMobile ? 1 : window.innerWidth >= 1024 ? 3 : 2
+  const itemsPerRow = isMobile ? 1 : windowDimensions.width >= 1024 ? 3 : 2
 
   // Render grid view with virtualization for better performance
   const renderGridView = () => {
     return (
       <VirtualList
         items={filteredModels}
-        height={isMobile ? window.innerHeight * 0.7 : 800}
+        height={isMobile ? windowDimensions.height * 0.7 : 800}
         itemHeight={320}
         itemsPerRow={itemsPerRow}
         renderItem={(model) => (
@@ -383,7 +402,7 @@ export function ModelBrowser() {
     return (
       <VirtualList
         items={filteredModels}
-        height={isMobile ? window.innerHeight * 0.7 : 800}
+        height={isMobile ? windowDimensions.height * 0.7 : 800}
         itemHeight={isMobile ? 140 : 100}
         itemsPerRow={1}
         renderItem={(model) => (

@@ -20,9 +20,28 @@ export function VirtualList<T>({ items, height, itemHeight, itemsPerRow, renderI
   const [clientHeight, setClientHeight] = useState(height)
   const [showScrollToTop, setShowScrollToTop] = useState(false)
   const isMobile = useMediaQuery("(max-width: 768px)")
+  const [windowDimensions, setWindowDimensions] = useState({ width: 0, height: 0 })
+
+  // Initialize window dimensions on client side
+  useEffect(() => {
+    setWindowDimensions({
+      width: window.innerWidth,
+      height: window.innerHeight,
+    })
+
+    const handleResize = () => {
+      setWindowDimensions({
+        width: window.innerWidth,
+        height: window.innerHeight,
+      })
+    }
+
+    window.addEventListener("resize", handleResize)
+    return () => window.removeEventListener("resize", handleResize)
+  }, [])
 
   // Adjust height for mobile
-  const effectiveHeight = isMobile ? window.innerHeight * 0.7 : height
+  const effectiveHeight = isMobile ? windowDimensions.height * 0.7 : height
 
   // Calculate the total height of all items
   const rowCount = Math.ceil(items.length / itemsPerRow)
@@ -97,7 +116,7 @@ export function VirtualList<T>({ items, height, itemHeight, itemsPerRow, renderI
             }}
           >
             <div
-              className={`grid grid-cols-${gridCols} gap-4`}
+              className={`grid gap-4`}
               style={{
                 gridTemplateColumns: `repeat(${gridCols}, minmax(0, 1fr))`,
               }}

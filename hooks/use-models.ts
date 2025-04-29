@@ -43,6 +43,9 @@ type ModelsResponse = {
 const MODELS_CACHE_KEY = "openrouter-models"
 const MODELS_QUERY_KEY = ["openrouter-models"]
 
+// Check if we're in a browser environment
+const isBrowser = typeof window !== "undefined"
+
 // Function to fetch models from OpenRouter API
 const fetchModels = async (): Promise<Model[]> => {
   // Add a timeout to the fetch request
@@ -67,17 +70,21 @@ const fetchModels = async (): Promise<Model[]> => {
     const response = await fetchWithTimeout("https://openrouter.ai/api/v1/models")
     const data: ModelsResponse = await response.json()
 
-    // Cache the fresh data
-    setCache(MODELS_CACHE_KEY, data.data)
+    // Cache the fresh data if in browser
+    if (isBrowser) {
+      setCache(MODELS_CACHE_KEY, data.data)
+    }
 
     return data.data
   } catch (error) {
     console.error("Error fetching models:", error)
 
     // If we have cached data, return it as a fallback
-    const cachedData = getCache<Model[]>(MODELS_CACHE_KEY)
-    if (cachedData) {
-      return cachedData
+    if (isBrowser) {
+      const cachedData = getCache<Model[]>(MODELS_CACHE_KEY)
+      if (cachedData) {
+        return cachedData
+      }
     }
 
     throw error
@@ -89,11 +96,13 @@ export function useModels() {
   const [cacheStatus, setCacheStatus] = useState<string>("")
   const [isRefreshing, setIsRefreshing] = useState(false)
 
-  // Check for cached data on mount
+  // Check for cached data on mount (client-side only)
   useEffect(() => {
     const updateCacheStatus = () => {
-      const cacheAge = getCacheAge(MODELS_CACHE_KEY)
-      setCacheStatus(formatCacheAge(cacheAge))
+      if (isBrowser) {
+        const cacheAge = getCacheAge(MODELS_CACHE_KEY)
+        setCacheStatus(formatCacheAge(cacheAge))
+      }
     }
 
     updateCacheStatus()
@@ -117,13 +126,16 @@ export function useModels() {
     cacheTime: 24 * 60 * 60 * 1000, // 24 hours
     refetchOnWindowFocus: false,
     refetchOnMount: false,
-    // Use cached data if available
+    // Use cached data if available (client-side only)
     initialData: () => {
-      const cachedData = getCache<Model[]>(MODELS_CACHE_KEY)
-      return cachedData || undefined
+      if (isBrowser) {
+        const cachedData = getCache<Model[]>(MODELS_CACHE_KEY)
+        return cachedData || undefined
+      }
+      return undefined
     },
     // Only refetch if cache is older than 30 minutes
-    refetchOnReconnect: hasValidCache(MODELS_CACHE_KEY) ? false : "always",
+    refetchOnReconnect: isBrowser && hasValidCache(MODELS_CACHE_KEY) ? false : "always",
   })
 
   // Function to manually refresh data
@@ -133,8 +145,10 @@ export function useModels() {
       await queryClient.fetchQuery(MODELS_QUERY_KEY, fetchModels, {
         staleTime: 0,
       })
-      const cacheAge = getCacheAge(MODELS_CACHE_KEY)
-      setCacheStatus(formatCacheAge(cacheAge))
+      if (isBrowser) {
+        const cacheAge = getCacheAge(MODELS_CACHE_KEY)
+        setCacheStatus(formatCacheAge(cacheAge))
+      }
     } finally {
       setIsRefreshing(false)
     }
