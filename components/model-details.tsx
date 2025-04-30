@@ -393,49 +393,63 @@ ${capabilities.map((cap) => `		<string>${cap}</string>`).join("\n")}
           <Card>
             <CardHeader>
               <CardTitle>Cost Estimation</CardTitle>
-              <CardDescription>Approximate costs for common usage scenarios</CardDescription>
+              <CardDescription>Approximate costs for 1 million tokens</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
                 <div className="p-4 border rounded-lg">
-                  <h3 className="font-medium mb-2">1,000 word essay (approx. 1,500 tokens)</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Input cost (500 tokens)</p>
-                      <p className="font-medium">
-                        {Number.parseFloat(model.pricing.prompt) === 0
-                          ? "Free"
-                          : `$${(Number.parseFloat(model.pricing.prompt) * 500).toFixed(6)}`}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Output cost (1,000 tokens)</p>
-                      <p className="font-medium">
-                        {Number.parseFloat(model.pricing.completion) === 0
-                          ? "Free"
-                          : `$${(Number.parseFloat(model.pricing.completion) * 1000).toFixed(6)}`}
-                      </p>
-                    </div>
+                  <h3 className="font-medium mb-2">1 Million Prompt Tokens</h3>
+                  <div className="flex items-center gap-2">
+                    <Zap className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-xl font-medium">
+                      {Number.parseFloat(model.pricing.prompt) === 0
+                        ? "Free"
+                        : `$${(Number.parseFloat(model.pricing.prompt) * 1000000).toFixed(2)}`}
+                    </span>
                   </div>
                 </div>
 
                 <div className="p-4 border rounded-lg">
-                  <h3 className="font-medium mb-2">Chat conversation (10 messages, 3,000 tokens total)</h3>
+                  <h3 className="font-medium mb-2">1 Million Completion Tokens</h3>
+                  <div className="flex items-center gap-2">
+                    <Zap className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-xl font-medium">
+                      {Number.parseFloat(model.pricing.completion) === 0
+                        ? "Free"
+                        : `$${(Number.parseFloat(model.pricing.completion) * 1000000).toFixed(2)}`}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="p-4 border rounded-lg">
+                  <h3 className="font-medium mb-2">Typical Chat Session (500K input / 500K output)</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <p className="text-sm text-muted-foreground">Input cost (1,500 tokens)</p>
+                      <p className="text-sm text-muted-foreground">Input cost (500K tokens)</p>
                       <p className="font-medium">
                         {Number.parseFloat(model.pricing.prompt) === 0
                           ? "Free"
-                          : `$${(Number.parseFloat(model.pricing.prompt) * 1500).toFixed(6)}`}
+                          : `$${(Number.parseFloat(model.pricing.prompt) * 500000).toFixed(2)}`}
                       </p>
                     </div>
                     <div>
-                      <p className="text-sm text-muted-foreground">Output cost (1,500 tokens)</p>
+                      <p className="text-sm text-muted-foreground">Output cost (500K tokens)</p>
                       <p className="font-medium">
                         {Number.parseFloat(model.pricing.completion) === 0
                           ? "Free"
-                          : `$${(Number.parseFloat(model.pricing.completion) * 1500).toFixed(6)}`}
+                          : `$${(Number.parseFloat(model.pricing.completion) * 500000).toFixed(2)}`}
+                      </p>
+                    </div>
+                    <div className="col-span-1 md:col-span-2">
+                      <p className="text-sm text-muted-foreground">Total cost</p>
+                      <p className="font-medium">
+                        {Number.parseFloat(model.pricing.prompt) === 0 &&
+                        Number.parseFloat(model.pricing.completion) === 0
+                          ? "Free"
+                          : `$${(
+                              Number.parseFloat(model.pricing.prompt) * 500000 +
+                                Number.parseFloat(model.pricing.completion) * 500000
+                            ).toFixed(2)}`}
                       </p>
                     </div>
                   </div>

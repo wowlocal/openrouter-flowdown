@@ -3,7 +3,7 @@
 import React from "react"
 
 import { useState, useCallback, useMemo, useEffect } from "react"
-import { Search, SlidersHorizontal, Zap, Clock, Hash, RefreshCw, X, ArrowUpDown, SortAsc, SortDesc } from "lucide-react"
+import { Search, SlidersHorizontal, Zap, Clock, Hash, X, ArrowUpDown, SortAsc, SortDesc } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -23,7 +23,6 @@ import { ModelDetails } from "@/components/model-details"
 import { useDebounce } from "@/hooks/use-debounce"
 import { VirtualList } from "@/components/virtual-list"
 import { useModels, type Model } from "@/hooks/use-models"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { useMediaQuery } from "@/hooks/use-media-query"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 
@@ -31,7 +30,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTr
 const formatPrice = (price: string): string => {
   const num = Number.parseFloat(price)
   if (num === 0) return "Free"
-  return `$${num.toFixed(7)}/token`
+  return `$${(num * 1000000).toFixed(2)}/M tokens`
 }
 
 // Helper to get provider name from model ID
@@ -89,6 +88,10 @@ const ModelCard = React.memo(({ model, onSelect }: { model: Model; onSelect: (mo
           <Hash className="h-3 w-3" />
           <span>{model.context_length.toLocaleString()} tokens</span>
         </div>
+        <div className="flex items-center gap-1 text-xs bg-secondary text-secondary-foreground px-2 py-1 rounded-md">
+          <Zap className="h-3 w-3" />
+          <span>{formatPrice(model.pricing.completion)}</span>
+        </div>
       </CardFooter>
     </Card>
   )
@@ -130,7 +133,11 @@ const ModelListItem = React.memo(({ model, onSelect }: { model: Model; onSelect:
         </div>
         <div className="flex items-center gap-1 text-xs bg-secondary text-secondary-foreground px-2 py-1 rounded-md">
           <Zap className="h-3 w-3" />
-          <span>{formatPrice(model.pricing.completion)}</span>
+          <span>
+            {Number.parseFloat(model.pricing.completion) === 0
+              ? "Free"
+              : `$${(Number.parseFloat(model.pricing.completion) * 1000000).toFixed(2)}M`}
+          </span>
         </div>
       </div>
     </div>
@@ -565,7 +572,7 @@ export function ModelBrowser() {
           )}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56">
+      <DropdownMenuContent align="end" className="w-56 max-h-[60vh] overflow-y-auto">
         <DropdownMenuCheckboxItem
           checked={filters.freeOnly}
           onCheckedChange={(checked) => setFilters((prev) => ({ ...prev, freeOnly: checked }))}
@@ -716,26 +723,6 @@ export function ModelBrowser() {
           <div className="flex gap-2">
             {isMobile ? renderMobileFilters() : renderDesktopFilters()}
             {renderSortDropdown()}
-
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={refreshModels}
-                    disabled={isRefreshing}
-                    className={isRefreshing ? "animate-spin" : ""}
-                  >
-                    <RefreshCw className="h-4 w-4" />
-                    <span className="sr-only">Refresh models</span>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Refresh models (last updated: {cacheStatus})</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
           </div>
 
           <Tabs defaultValue="grid" className="w-auto" onValueChange={(v) => setView(v as "grid" | "list")}>
@@ -805,12 +792,6 @@ export function ModelBrowser() {
             <p className="text-sm text-muted-foreground">
               Showing {filteredModels.length} of {models?.length} models
             </p>
-            {isRefreshing && (
-              <p className="text-sm text-muted-foreground flex items-center gap-2">
-                <RefreshCw className="h-3 w-3 animate-spin" />
-                Refreshing...
-              </p>
-            )}
           </div>
 
           {view === "grid" ? renderGridView() : renderListView()}

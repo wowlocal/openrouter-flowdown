@@ -12,8 +12,10 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { AlertCircle, Check } from "lucide-react"
+import { AlertCircle, Check, RefreshCw, Clock, AlertTriangle } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Separator } from "@/components/ui/separator"
+import { useModels } from "@/hooks/use-models"
 
 // Local storage key for the OpenRouter API key
 export const OPENROUTER_API_KEY = "openrouter-api-key"
@@ -28,6 +30,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const [savedKey, setSavedKey] = useState<string | null>(null)
   const [showKeyWarning, setShowKeyWarning] = useState(false)
   const [saveSuccess, setSaveSuccess] = useState(false)
+  const { refreshModels, isRefreshing, cacheStatus, error } = useModels()
 
   // Load the saved API key when the modal opens
   useEffect(() => {
@@ -61,6 +64,14 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     setApiKey("")
     setSavedKey(null)
     setSaveSuccess(false)
+  }
+
+  const handleRefresh = async () => {
+    try {
+      await refreshModels()
+    } catch (err) {
+      console.error("Error refreshing models:", err)
+    }
   }
 
   return (
@@ -109,6 +120,42 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
               </p>
             )}
           </div>
+        </div>
+
+        <Separator className="my-2" />
+
+        <div className="space-y-4">
+          <h3 className="text-sm font-medium">Model Cache</h3>
+
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Clock className="h-4 w-4" />
+              <span>Last updated: {cacheStatus}</span>
+            </div>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              className="flex items-center gap-2"
+            >
+              <RefreshCw className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
+              {isRefreshing ? "Refreshing..." : "Refresh Models"}
+            </Button>
+          </div>
+
+          {error && (
+            <Alert variant="destructive" className="mt-2">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>Error refreshing models. Please try again later.</AlertDescription>
+            </Alert>
+          )}
+
+          <p className="text-xs text-muted-foreground">
+            Model data is cached for 24 hours to improve performance. Click refresh to fetch the latest models from
+            OpenRouter.
+          </p>
         </div>
 
         <DialogFooter className="flex justify-between sm:justify-between">
