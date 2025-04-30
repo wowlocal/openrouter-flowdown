@@ -119,11 +119,12 @@ export function useModels() {
     error,
     isFetching,
     dataUpdatedAt,
+    refetch,
   } = useQuery({
     queryKey: MODELS_QUERY_KEY,
     queryFn: fetchModels,
     staleTime: 30 * 60 * 1000, // 30 minutes
-    cacheTime: 24 * 60 * 60 * 1000, // 24 hours
+    gcTime: 24 * 60 * 60 * 1000, // 24 hours (renamed from cacheTime in v4)
     refetchOnWindowFocus: false,
     refetchOnMount: false,
     // Use cached data if available (client-side only)
@@ -142,13 +143,15 @@ export function useModels() {
   const refreshModels = async () => {
     setIsRefreshing(true)
     try {
-      await queryClient.fetchQuery(MODELS_QUERY_KEY, fetchModels, {
-        staleTime: 0,
-      })
+      // Use the refetch function from useQuery instead of queryClient.fetchQuery
+      await refetch()
+
       if (isBrowser) {
         const cacheAge = getCacheAge(MODELS_CACHE_KEY)
         setCacheStatus(formatCacheAge(cacheAge))
       }
+    } catch (error) {
+      console.error("Error refreshing models:", error)
     } finally {
       setIsRefreshing(false)
     }

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import {
   Dialog,
   DialogContent,
@@ -29,6 +29,8 @@ export function ExportConfigModal({ isOpen, onClose, onExport, modelContextLengt
   const [contextLength, setContextLength] = useState<string>(getClosestContextLength(modelContextLength).toString())
   const [showTokenWarning, setShowTokenWarning] = useState(false)
   const [hasSavedToken, setHasSavedToken] = useState(false)
+  const selectRef = useRef<HTMLButtonElement>(null)
+  const exportButtonRef = useRef<HTMLButtonElement>(null)
 
   // Get the closest allowed context length
   function getClosestContextLength(originalLength: number): number {
@@ -50,6 +52,16 @@ export function ExportConfigModal({ isOpen, onClose, onExport, modelContextLengt
       if (savedToken) {
         setToken(savedToken)
         setHasSavedToken(true)
+
+        // Focus on the select element or export button instead of the token input
+        // Use a short timeout to ensure the modal is fully rendered
+        setTimeout(() => {
+          if (selectRef.current) {
+            selectRef.current.focus()
+          } else if (exportButtonRef.current) {
+            exportButtonRef.current.focus()
+          }
+        }, 50)
       } else {
         setHasSavedToken(false)
       }
@@ -100,6 +112,7 @@ export function ExportConfigModal({ isOpen, onClose, onExport, modelContextLengt
                 setShowTokenWarning(false)
               }}
               type="password"
+              autoFocus={!hasSavedToken}
             />
             {hasSavedToken && (
               <p className="col-span-4 text-xs text-muted-foreground">
@@ -113,7 +126,7 @@ export function ExportConfigModal({ isOpen, onClose, onExport, modelContextLengt
               Context Length
             </Label>
             <Select value={contextLength} onValueChange={setContextLength}>
-              <SelectTrigger className="col-span-4">
+              <SelectTrigger ref={selectRef} className="col-span-4">
                 <SelectValue placeholder="Select context length" />
               </SelectTrigger>
               <SelectContent>
@@ -130,7 +143,9 @@ export function ExportConfigModal({ isOpen, onClose, onExport, modelContextLengt
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
-          <Button onClick={handleExport}>Export Configuration</Button>
+          <Button ref={exportButtonRef} onClick={handleExport}>
+            Export Configuration
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
