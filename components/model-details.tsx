@@ -100,6 +100,9 @@ console.log(text);`
       // Generate current date in the required format
       const currentDate = new Date().toISOString().replace(/\.\d+Z$/, "Z")
 
+      // Handle infinity context length
+      const contextLengthValue = contextLength === -1 ? 1000000 : contextLength
+
       // Create the plist XML content
       const plistContent = `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -112,7 +115,7 @@ ${capabilities.map((cap) => `		<string>${cap}</string>`).join("\n")}
 	<key>comment</key>
 	<string></string>
 	<key>context</key>
-	<integer>${contextLength}</integer>
+	<integer>${contextLengthValue}</integer>
 	<key>creation</key>
 	<date>${currentDate}</date>
 	<key>endpoint</key>

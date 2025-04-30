@@ -16,6 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { AlertCircle } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { OPENROUTER_API_KEY } from "@/components/settings-modal"
+import { BookText, BookOpen, Library, Sparkles } from "lucide-react"
 
 interface ExportConfigModalProps {
   isOpen: boolean
@@ -24,9 +25,22 @@ interface ExportConfigModalProps {
   modelContextLength: number
 }
 
+// Define context length options with their display names and values
+const contextLengthOptions = [
+  { value: 4000, display: "Short 4k", icon: BookText },
+  { value: 8000, display: "Short 8k", icon: BookText },
+  { value: 16000, display: "Medium 16k", icon: BookOpen },
+  { value: 32000, display: "Medium 32k", icon: BookOpen },
+  { value: 64000, display: "Medium 64k", icon: BookOpen },
+  { value: 100000, display: "Long 100k", icon: Library },
+  { value: 200000, display: "Long 200k", icon: Library },
+  { value: 1000000, display: "Huge 1M", icon: Library },
+  { value: -1, display: "Infinity", icon: Sparkles },
+]
+
 export function ExportConfigModal({ isOpen, onClose, onExport, modelContextLength }: ExportConfigModalProps) {
   const [token, setToken] = useState("")
-  const [contextLength, setContextLength] = useState<string>(getClosestContextLength(modelContextLength).toString())
+  const [contextLength, setContextLength] = useState<string>("")
   const [showTokenWarning, setShowTokenWarning] = useState(false)
   const [hasSavedToken, setHasSavedToken] = useState(false)
   const selectRef = useRef<HTMLButtonElement>(null)
@@ -34,15 +48,14 @@ export function ExportConfigModal({ isOpen, onClose, onExport, modelContextLengt
 
   // Get the closest allowed context length
   function getClosestContextLength(originalLength: number): number {
-    const allowedLengths = [32000, 64000, 128000, 1000000]
-    // Find the smallest allowed length that is >= the original
-    for (const length of allowedLengths) {
-      if (originalLength <= length) {
-        return length
+    // Find the smallest option that is >= the original length
+    for (const option of contextLengthOptions) {
+      if (originalLength <= option.value || option.value === -1) {
+        return option.value
       }
     }
-    // If original is larger than all allowed values, return the largest allowed
-    return allowedLengths[allowedLengths.length - 1]
+    // If original is larger than all options except infinity, return the largest finite option
+    return 1000000
   }
 
   // Load saved token when modal opens
@@ -65,7 +78,10 @@ export function ExportConfigModal({ isOpen, onClose, onExport, modelContextLengt
       } else {
         setHasSavedToken(false)
       }
-      setContextLength(getClosestContextLength(modelContextLength).toString())
+
+      // Set the closest context length option
+      const closestLength = getClosestContextLength(modelContextLength)
+      setContextLength(closestLength.toString())
       setShowTokenWarning(false)
     }
   }, [isOpen, modelContextLength])
@@ -129,11 +145,15 @@ export function ExportConfigModal({ isOpen, onClose, onExport, modelContextLengt
               <SelectTrigger ref={selectRef} className="col-span-4">
                 <SelectValue placeholder="Select context length" />
               </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="32000">32,000 tokens</SelectItem>
-                <SelectItem value="64000">64,000 tokens</SelectItem>
-                <SelectItem value="128000">128,000 tokens</SelectItem>
-                <SelectItem value="1000000">1,000,000 tokens</SelectItem>
+              <SelectContent className="max-h-[300px]">
+                {contextLengthOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value.toString()} className="flex items-center">
+                    <div className="flex items-center gap-2">
+                      <option.icon className="h-4 w-4" />
+                      <span>{option.display}</span>
+                    </div>
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
