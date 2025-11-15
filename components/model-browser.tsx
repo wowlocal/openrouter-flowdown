@@ -2,7 +2,6 @@
 
 import React from "react"
 
-import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { useState, useCallback, useMemo, useEffect, useRef } from "react"
 import { Search, SlidersHorizontal, Zap, Clock, Hash, X, ArrowUpDown, SortAsc, SortDesc } from "lucide-react"
 import { Input } from "@/components/ui/input"
@@ -51,6 +50,17 @@ const getModelName = (fullName: string): string => {
 // Helper to check if model is free
 const isFree = (model: Model): boolean => {
   return Number.parseFloat(model.pricing.prompt) === 0 && Number.parseFloat(model.pricing.completion) === 0
+}
+
+const getModelIdFromLocation = (): string | null => {
+  if (typeof window === "undefined") {
+    return null
+  }
+
+  const params = new URL(window.location.href).searchParams
+  const modelId = params.get("model")
+
+  return modelId?.trim() ? modelId : null
 }
 
 // Memoized model card component for better performance
@@ -159,11 +169,44 @@ export function ModelBrowser() {
   const [windowDimensions, setWindowDimensions] = useState({ width: 0, height: 0 })
   const scrollPositionRef = useRef(0)
   const shouldRestoreScrollRef = useRef(false)
-  const router = useRouter()
-  const pathname = usePathname()
-  const searchParams = useSearchParams()
-  const searchParamsString = useMemo(() => searchParams?.toString() ?? "", [searchParams])
-  const selectedModelId = searchParams?.get("model") ?? null
+  const [selectedModelId, setSelectedModelId] = useState<string | null>(() => getModelIdFromLocation())
+
+  const updateUrl = useCallback((nextModelId: string | null, { replace = false } = {}) => {
+    if (typeof window === "undefined") {
+      return
+    }
+
+    const currentId = getModelIdFromLocation()
+    if (currentId === nextModelId) {
+      return
+    }
+
+    const url = new URL(window.location.href)
+    if (nextModelId) {
+      url.searchParams.set("model", nextModelId)
+    } else {
+      url.searchParams.delete("model")
+    }
+
+    const method: "pushState" | "replaceState" = replace ? "replaceState" : "pushState"
+    const state = window.history.state ?? {}
+    window.history[method]({ ...state, modelBrowser: true }, "", url)
+  }, [])
+
+  useEffect(() => {
+    setSelectedModelId(getModelIdFromLocation())
+
+    const handlePopState = () => {
+      const nextId = getModelIdFromLocation()
+      setSelectedModelId(nextId)
+      shouldRestoreScrollRef.current = !nextId
+    }
+
+    window.addEventListener("popstate", handlePopState)
+    return () => {
+      window.removeEventListener("popstate", handlePopState)
+    }
+  }, [])
 
   // Initialize window dimensions on client side
   useEffect(() => {
@@ -367,24 +410,18 @@ export function ModelBrowser() {
         scrollPositionRef.current = window.scrollY
       }
       shouldRestoreScrollRef.current = true
-
-      const params = new URLSearchParams(searchParamsString)
-      params.set("model", model.id)
-      const queryString = params.toString()
-      const target = queryString ? `${pathname}?${queryString}` : pathname
-      router.push(target, { scroll: false })
+      setSelectedModelId(model.id)
+      updateUrl(model.id)
     },
-    [pathname, router, searchParamsString],
+    [updateUrl],
   )
 
   // Handle back from details view - memoized callback
   const handleBack = useCallback(() => {
-    const params = new URLSearchParams(searchParamsString)
-    params.delete("model")
-    const queryString = params.toString()
-    const target = queryString ? `${pathname}?${queryString}` : pathname
-    router.push(target, { scroll: false })
-  }, [pathname, router, searchParamsString])
+    shouldRestoreScrollRef.current = true
+    setSelectedModelId(null)
+    updateUrl(null)
+  }, [updateUrl])
 
   // Handle search input change - direct update without debounce for responsive UI
   const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
