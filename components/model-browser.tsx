@@ -201,19 +201,24 @@ export function ModelBrowser() {
     })
   }, [selectedModelId])
 
-  // Add these new state variables after the existing state declarations
-  const [sortBy, setSortBy] = useState<string>("none")
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc")
-  const [capabilityFilters, setCapabilityFilters] = useState({
-    inputModalities: new Set<string>(),
-    outputModalities: new Set<string>(),
-    supportedParameters: new Set<string>(),
-  })
-  const [hasHydrated, setHasHydrated] = useState(false)
+    // Add these new state variables after the existing state declarations
+    const [sortBy, setSortBy] = useState<string>("none")
+    const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc")
+    const [capabilityFilters, setCapabilityFilters] = useState({
+      inputModalities: new Set<string>(),
+      outputModalities: new Set<string>(),
+      supportedParameters: new Set<string>(),
+    })
+    const [hasHydrated, setHasHydrated] = useState(false)
+    const [currentPage, setCurrentPage] = useState(1)
 
-  useEffect(() => {
-    setHasHydrated(true)
-  }, [])
+    useEffect(() => {
+      setHasHydrated(true)
+    }, [])
+
+    useEffect(() => {
+      setCurrentPage(1)
+    }, [debouncedSearchQuery, filters, capabilityFilters, sortBy, sortOrder])
 
   // Use the custom hook for models with caching
   const { models, isLoading, isRefreshing, error, cacheStatus, refreshModels } = useModels()
@@ -457,38 +462,42 @@ export function ModelBrowser() {
   const itemsPerRow = isMobile ? 1 : windowDimensions.width >= 1024 ? 3 : 2
 
   // Render grid view with virtualization for better performance
-  const renderGridView = () => {
-    return (
-      <VirtualList
-        items={filteredModels}
-        height={isMobile ? windowDimensions.height * 0.7 : 800}
-        itemHeight={320}
-        itemsPerRow={itemsPerRow}
-        renderItem={(model) => (
-          <div className="p-2 h-full">
-            <ModelCard model={model} onSelect={handleModelSelect} />
-          </div>
-        )}
-      />
-    )
-  }
+    const renderGridView = () => {
+      return (
+        <VirtualList
+          items={filteredModels}
+          height={isMobile ? windowDimensions.height * 0.7 : 800}
+          itemHeight={320}
+          itemsPerRow={itemsPerRow}
+          page={currentPage}
+          onPageChange={setCurrentPage}
+          renderItem={(model) => (
+            <div className="p-2 h-full">
+              <ModelCard model={model} onSelect={handleModelSelect} />
+            </div>
+          )}
+        />
+      )
+    }
 
-  // Render list view with virtualization for better performance
-  const renderListView = () => {
-    return (
-      <VirtualList
-        items={filteredModels}
-        height={isMobile ? windowDimensions.height * 0.7 : 800}
-        itemHeight={isMobile ? 140 : 100}
-        itemsPerRow={1}
-        renderItem={(model) => (
-          <div className="py-1">
-            <ModelListItem model={model} onSelect={handleModelSelect} />
-          </div>
-        )}
-      />
-    )
-  }
+    // Render list view with virtualization for better performance
+    const renderListView = () => {
+      return (
+        <VirtualList
+          items={filteredModels}
+          height={isMobile ? windowDimensions.height * 0.7 : 800}
+          itemHeight={isMobile ? 140 : 100}
+          itemsPerRow={1}
+          page={currentPage}
+          onPageChange={setCurrentPage}
+          renderItem={(model) => (
+            <div className="py-1">
+              <ModelListItem model={model} onSelect={handleModelSelect} />
+            </div>
+          )}
+        />
+      )
+    }
 
   // Update the renderMobileFilters function to include capability filters
   // Replace the existing renderMobileFilters function with this updated version
