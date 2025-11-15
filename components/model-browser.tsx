@@ -2,7 +2,7 @@
 
 import React from "react"
 
-import { useState, useCallback, useMemo, useEffect } from "react"
+import { useState, useCallback, useMemo, useEffect, useRef } from "react"
 import { Search, SlidersHorizontal, Zap, Clock, Hash, X, ArrowUpDown, SortAsc, SortDesc } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -157,6 +157,8 @@ export function ModelBrowser() {
   const [isFiltersOpen, setIsFiltersOpen] = useState(false)
   const isMobile = useMediaQuery("(max-width: 768px)")
   const [windowDimensions, setWindowDimensions] = useState({ width: 0, height: 0 })
+  const scrollPositionRef = useRef(0)
+  const shouldRestoreScrollRef = useRef(false)
 
   // Initialize window dimensions on client side
   useEffect(() => {
@@ -175,6 +177,24 @@ export function ModelBrowser() {
     window.addEventListener("resize", handleResize)
     return () => window.removeEventListener("resize", handleResize)
   }, [])
+
+  useEffect(() => {
+    if (selectedModel || !shouldRestoreScrollRef.current) {
+      return
+    }
+
+    if (typeof window === "undefined") {
+      shouldRestoreScrollRef.current = false
+      return
+    }
+
+    const targetScroll = scrollPositionRef.current
+    shouldRestoreScrollRef.current = false
+
+    window.requestAnimationFrame(() => {
+      window.scrollTo({ top: targetScroll, behavior: "auto" })
+    })
+  }, [selectedModel])
 
   // Add these new state variables after the existing state declarations
   const [sortBy, setSortBy] = useState<string>("none")
@@ -323,11 +343,15 @@ export function ModelBrowser() {
 
   // Handle model selection for details view - memoized callback
   const handleModelSelect = useCallback((model: Model) => {
+    if (typeof window !== "undefined") {
+      scrollPositionRef.current = window.scrollY
+    }
     setSelectedModel(model)
   }, [])
 
   // Handle back from details view - memoized callback
   const handleBack = useCallback(() => {
+    shouldRestoreScrollRef.current = true
     setSelectedModel(null)
   }, [])
 

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useEffect } from "react"
 import { ArrowLeft, Clock, Hash, Zap, Layers, Check, AlertCircle, Download } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -62,6 +62,11 @@ interface ModelDetailsProps {
 export function ModelDetails({ model, onBack }: ModelDetailsProps) {
   const [isExportModalOpen, setIsExportModalOpen] = useState(false)
   const isMobile = useMediaQuery("(max-width: 768px)")
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    window.scrollTo({ top: 0, behavior: "auto" })
+  }, [])
 
   // Generate code sample for the model
   const generateCodeSample = (modelId: string) => {
