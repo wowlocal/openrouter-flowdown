@@ -10,11 +10,14 @@ import { ExportConfigModal } from "@/components/export-config-modal"
 import type { Model } from "@/hooks/use-models"
 import { useMediaQuery } from "@/hooks/use-media-query"
 
-// Helper function to format pricing
+// Helper function to format pricing as dollars per 1M tokens
 const formatPrice = (price: string): string => {
   const num = Number.parseFloat(price)
+  if (!Number.isFinite(num) || Number.isNaN(num)) return "N/A"
   if (num === 0) return "Free"
-  return `$${num.toFixed(7)}/token`
+
+  const perMillion = num * 1_000_000
+  return `$${perMillion.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / 1M tokens`
 }
 
 // Helper to get provider name from model ID
@@ -316,7 +319,7 @@ ${capabilities.map((cap) => `		<string>${cap}</string>`).join("\n")}
           <Card>
             <CardHeader>
               <CardTitle>Pricing Details</CardTitle>
-              <CardDescription>Cost per token for different operations</CardDescription>
+              <CardDescription>Cost per 1M tokens for different operations</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
