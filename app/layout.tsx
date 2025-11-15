@@ -2,6 +2,7 @@ import type React from "react"
 import "@/app/globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Header } from "@/components/header"
+import { Footer } from "@/components/footer"
 import { Providers } from "@/components/providers"
 import { Inter } from "next/font/google"
 import type { Metadata } from "next"
@@ -25,9 +26,10 @@ export default function RootLayout({
       <body className={inter.className}>
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
           <Providers>
-            <div className="min-h-screen bg-background">
+            <div className="flex min-h-screen flex-col bg-background">
               <Header />
-              {children}
+              <div className="flex-1">{children}</div>
+              <Footer />
             </div>
           </Providers>
         </ThemeProvider>
