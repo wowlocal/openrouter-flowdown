@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 
 export function Footer() {
   return (
-    <footer className="border-t bg-gradient-to-b from-background via-background to-muted/30">
+    <footer className="border-t bg-background">
       <div className="container mx-auto flex flex-col items-center gap-4 px-4 py-10 text-center">
         <div className="space-y-1">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">Open Source</p>
