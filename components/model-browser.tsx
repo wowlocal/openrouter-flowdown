@@ -2,6 +2,7 @@
 
 import React from "react"
 
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { useState, useCallback, useMemo, useEffect, useRef } from "react"
 import { Search, SlidersHorizontal, Zap, Clock, Hash, X, ArrowUpDown, SortAsc, SortDesc } from "lucide-react"
 import { Input } from "@/components/ui/input"
@@ -148,7 +149,6 @@ ModelListItem.displayName = "ModelListItem"
 export function ModelBrowser() {
   const [searchInputValue, setSearchInputValue] = useState("")
   const debouncedSearchQuery = useDebounce(searchInputValue, 300)
-  const [selectedModel, setSelectedModel] = useState<Model | null>(null)
   const [view, setView] = useState<"grid" | "list">("grid")
   const [filters, setFilters] = useState({
     freeOnly: false,
@@ -159,6 +159,11 @@ export function ModelBrowser() {
   const [windowDimensions, setWindowDimensions] = useState({ width: 0, height: 0 })
   const scrollPositionRef = useRef(0)
   const shouldRestoreScrollRef = useRef(false)
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const searchParamsString = useMemo(() => searchParams?.toString() ?? "", [searchParams])
+  const selectedModelId = searchParams?.get("model") ?? null
 
   // Initialize window dimensions on client side
   useEffect(() => {
@@ -179,7 +184,7 @@ export function ModelBrowser() {
   }, [])
 
   useEffect(() => {
-    if (selectedModel || !shouldRestoreScrollRef.current) {
+    if (selectedModelId || !shouldRestoreScrollRef.current) {
       return
     }
 
@@ -194,7 +199,7 @@ export function ModelBrowser() {
     window.requestAnimationFrame(() => {
       window.scrollTo({ top: targetScroll, behavior: "auto" })
     })
-  }, [selectedModel])
+  }, [selectedModelId])
 
   // Add these new state variables after the existing state declarations
   const [sortBy, setSortBy] = useState<string>("none")
@@ -207,6 +212,10 @@ export function ModelBrowser() {
 
   // Use the custom hook for models with caching
   const { models, isLoading, isRefreshing, error, cacheStatus, refreshModels } = useModels()
+  const selectedModel = useMemo(() => {
+    if (!selectedModelId || !models) return null
+    return models.find((model) => model.id === selectedModelId) ?? null
+  }, [models, selectedModelId])
 
   // Get unique providers for filtering - memoized to prevent recalculation
   const providers = useMemo(() => {
@@ -342,18 +351,30 @@ export function ModelBrowser() {
   )
 
   // Handle model selection for details view - memoized callback
-  const handleModelSelect = useCallback((model: Model) => {
-    if (typeof window !== "undefined") {
-      scrollPositionRef.current = window.scrollY
-    }
-    setSelectedModel(model)
-  }, [])
+  const handleModelSelect = useCallback(
+    (model: Model) => {
+      if (typeof window !== "undefined") {
+        scrollPositionRef.current = window.scrollY
+      }
+      shouldRestoreScrollRef.current = true
+
+      const params = new URLSearchParams(searchParamsString)
+      params.set("model", model.id)
+      const queryString = params.toString()
+      const target = queryString ? `${pathname}?${queryString}` : pathname
+      router.push(target, { scroll: false })
+    },
+    [pathname, router, searchParamsString],
+  )
 
   // Handle back from details view - memoized callback
   const handleBack = useCallback(() => {
-    shouldRestoreScrollRef.current = true
-    setSelectedModel(null)
-  }, [])
+    const params = new URLSearchParams(searchParamsString)
+    params.delete("model")
+    const queryString = params.toString()
+    const target = queryString ? `${pathname}?${queryString}` : pathname
+    router.push(target, { scroll: false })
+  }, [pathname, router, searchParamsString])
 
   // Handle search input change - direct update without debounce for responsive UI
   const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -404,8 +425,27 @@ export function ModelBrowser() {
   }
 
   // If a model is selected, show its details
-  if (selectedModel) {
-    return <ModelDetails model={selectedModel} onBack={handleBack} />
+  if (selectedModelId) {
+    if (selectedModel) {
+      return <ModelDetails model={selectedModel} onBack={handleBack} />
+    }
+
+    if (isLoading) {
+      return (
+        <div className="p-8 text-center">
+          <p className="text-muted-foreground">Loading model information...</p>
+        </div>
+      )
+    }
+
+    return (
+      <div className="p-8 space-y-4 text-center">
+        <p className="text-muted-foreground">Model not found.</p>
+        <Button variant="outline" onClick={handleBack}>
+          Back to models
+        </Button>
+      </div>
+    )
   }
 
   // Determine grid columns based on screen size
