@@ -103,8 +103,8 @@ console.log(text);`
       // Handle infinity context length
       const contextLengthValue = contextLength === -1 ? 1000000 : contextLength
 
-      // Create the plist XML content
-      const plistContent = `<?xml version="1.0" encoding="UTF-8"?>
+      // Create the Flowdown model file contents (plist structured XML)
+      const fdmodelContent = `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
@@ -138,9 +138,9 @@ ${capabilities.map((cap) => `		<string>${cap}</string>`).join("\n")}
       const url = URL.createObjectURL(blob)
       const a = document.createElement("a")
       a.href = url
-      a.download = `${model.id.replace(/\//g, "-")}-config.plist`
+      a.download = `${model.id.replace(/\//g, "-")}-config.fdmodel`
 
-      // Set the correct content type for property list files
+      // Set the correct content type for Flowdown model files
       if (navigator.userAgent.indexOf("Safari") !== -1 && navigator.userAgent.indexOf("Chrome") === -1) {
         // Special handling for Safari which handles content types differently
         a.setAttribute("type", "application/x-plist")
