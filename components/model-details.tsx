@@ -134,7 +134,7 @@ ${capabilities.map((cap) => `		<string>${cap}</string>`).join("\n")}
 </plist>`
 
       // Create a blob and download the file
-      const blob = new Blob([plistContent], { type: "application/x-plist" })
+      const blob = new Blob([fdmodelContent], { type: "application/octet-stream" })
       const url = URL.createObjectURL(blob)
       const a = document.createElement("a")
       a.href = url
@@ -143,7 +143,7 @@ ${capabilities.map((cap) => `		<string>${cap}</string>`).join("\n")}
       // Set the correct content type for Flowdown model files
       if (navigator.userAgent.indexOf("Safari") !== -1 && navigator.userAgent.indexOf("Chrome") === -1) {
         // Special handling for Safari which handles content types differently
-        a.setAttribute("type", "application/x-plist")
+        a.setAttribute("type", "application/octet-stream")
       }
 
       document.body.appendChild(a)
