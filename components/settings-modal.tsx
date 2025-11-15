@@ -158,15 +158,15 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
           </p>
         </div>
 
-        <DialogFooter className="flex justify-between sm:justify-between">
-          <div>
+        <DialogFooter className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex w-full sm:w-auto">
             {savedKey && (
               <Button variant="outline" onClick={handleClearKey} className="text-destructive">
                 Clear Key
               </Button>
             )}
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 w-full sm:w-auto">
             <Button variant="outline" onClick={onClose}>
               Cancel
             </Button>

@@ -159,7 +159,7 @@ export function ExportConfigModal({ isOpen, onClose, onExport, modelContextLengt
           </div>
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="gap-2 sm:space-x-2">
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
