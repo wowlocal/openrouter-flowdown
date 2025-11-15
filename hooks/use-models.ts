@@ -112,6 +112,16 @@ export function useModels() {
     return () => clearInterval(interval)
   }, [])
 
+  // Hydrate query cache from localStorage after mount to avoid SSR mismatches
+  useEffect(() => {
+    if (!isBrowser) return
+
+    const cachedData = getCache<Model[]>(MODELS_CACHE_KEY)
+    if (cachedData && !queryClient.getQueryData(MODELS_QUERY_KEY)) {
+      queryClient.setQueryData(MODELS_QUERY_KEY, cachedData)
+    }
+  }, [queryClient])
+
   // Use React Query with optimized caching strategy
   const {
     data: models,
@@ -127,14 +137,6 @@ export function useModels() {
     gcTime: 24 * 60 * 60 * 1000, // 24 hours (renamed from cacheTime in v4)
     refetchOnWindowFocus: false,
     refetchOnMount: false,
-    // Use cached data if available (client-side only)
-    initialData: () => {
-      if (isBrowser) {
-        const cachedData = getCache<Model[]>(MODELS_CACHE_KEY)
-        return cachedData || undefined
-      }
-      return undefined
-    },
     // Only refetch if cache is older than 30 minutes
     refetchOnReconnect: isBrowser && hasValidCache(MODELS_CACHE_KEY) ? false : "always",
   })
