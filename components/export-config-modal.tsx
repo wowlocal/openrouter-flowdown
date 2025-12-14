@@ -25,17 +25,19 @@ interface ExportConfigModalProps {
   modelContextLength: number
 }
 
-// Define context length options with their display names and values
+const FLOWDOWN_INFINITY = 2_147_483_647
+
+// Define context length options with their display names and values (mirrors FlowDown)
 const contextLengthOptions = [
-  { value: 4000, display: "Short 4k", icon: BookText },
-  { value: 8000, display: "Short 8k", icon: BookText },
-  { value: 16000, display: "Medium 16k", icon: BookOpen },
-  { value: 32000, display: "Medium 32k", icon: BookOpen },
-  { value: 64000, display: "Medium 64k", icon: BookOpen },
-  { value: 100000, display: "Long 100k", icon: Library },
-  { value: 200000, display: "Long 200k", icon: Library },
-  { value: 1000000, display: "Huge 1M", icon: Library },
-  { value: -1, display: "Infinity", icon: Sparkles },
+  { value: 4_000, display: "Short 4k", icon: BookText },
+  { value: 8_000, display: "Short 8k", icon: BookText },
+  { value: 16_000, display: "Medium 16k", icon: BookOpen },
+  { value: 32_000, display: "Medium 32k", icon: BookOpen },
+  { value: 64_000, display: "Medium 64k", icon: BookOpen },
+  { value: 100_000, display: "Long 100k", icon: Library },
+  { value: 200_000, display: "Long 200k", icon: Library },
+  { value: 1_000_000, display: "Huge 1M", icon: Library },
+  { value: FLOWDOWN_INFINITY, display: "Infinity", icon: Sparkles },
 ]
 
 export function ExportConfigModal({ isOpen, onClose, onExport, modelContextLength }: ExportConfigModalProps) {
@@ -46,16 +48,53 @@ export function ExportConfigModal({ isOpen, onClose, onExport, modelContextLengt
   const selectRef = useRef<HTMLButtonElement>(null)
   const exportButtonRef = useRef<HTMLButtonElement>(null)
 
-  // Get the closest allowed context length
+  // Get the closest allowed context length (prefers the nearest FlowDown value, rounding up on ties)
   function getClosestContextLength(originalLength: number): number {
-    // Find the smallest option that is >= the original length
-    for (const option of contextLengthOptions) {
-      if (originalLength <= option.value || option.value === -1) {
-        return option.value
+    if (!Number.isFinite(originalLength) || originalLength <= 0) {
+      return FLOWDOWN_INFINITY
+    }
+
+    const infinityOption = contextLengthOptions.find((option) => option.value === FLOWDOWN_INFINITY)
+    const finiteOptions = contextLengthOptions.filter((option) => option.value !== FLOWDOWN_INFINITY)
+
+    if (finiteOptions.length === 0) {
+      return infinityOption?.value ?? FLOWDOWN_INFINITY
+    }
+
+    const smallestFinite = finiteOptions[0]
+    const largestFinite = finiteOptions[finiteOptions.length - 1]
+
+    if (originalLength <= smallestFinite.value) {
+      return smallestFinite.value
+    }
+
+    if (originalLength >= largestFinite.value * 1.25) {
+      return infinityOption?.value ?? largestFinite.value
+    }
+
+    if (originalLength >= largestFinite.value) {
+      return largestFinite.value
+    }
+
+    for (let i = 0; i < finiteOptions.length; i++) {
+      const current = finiteOptions[i]
+      if (originalLength === current.value) {
+        return current.value
+      }
+
+      if (originalLength < current.value) {
+        const previous = finiteOptions[i - 1]
+        if (!previous) {
+          return current.value
+        }
+
+        const distanceDown = originalLength - previous.value
+        const distanceUp = current.value - originalLength
+        return distanceDown < distanceUp ? previous.value : current.value
       }
     }
-    // If original is larger than all options except infinity, return the largest finite option
-    return 1000000
+
+    return largestFinite.value
   }
 
   // Load saved token when modal opens

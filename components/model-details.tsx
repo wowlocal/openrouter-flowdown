@@ -85,31 +85,28 @@ const { text } = await generateText({
   prompt: 'What is OpenRouter?',
 });
 
-console.log(text);`
-  }
+  console.log(text);`
+    }
 
-  // Handle export configuration
-  const handleExportConfig = useCallback(
-    (token: string, contextLength: number) => {
-      // Determine capabilities based on model architecture
-      const capabilities = []
+    // Handle export configuration
+    const handleExportConfig = useCallback(
+      (token: string, contextLength: number) => {
+        // Determine capabilities based on model architecture
+        const capabilities = []
 
-      if (
-        model.architecture.input_modalities.includes("image") ||
-        model.architecture.output_modalities.includes("image")
-      ) {
-        capabilities.push("visual")
-      }
+        if (
+          model.architecture.input_modalities.includes("image") ||
+          model.architecture.output_modalities.includes("image")
+        ) {
+          capabilities.push("visual")
+        }
 
-      if (model.supported_parameters.includes("tools") || model.supported_parameters.includes("tool_choice")) {
-        capabilities.push("tool")
-      }
+        if (model.supported_parameters.includes("tools") || model.supported_parameters.includes("tool_choice")) {
+          capabilities.push("tool")
+        }
 
       // Generate current date in the required format
       const currentDate = new Date().toISOString().replace(/\.\d+Z$/, "Z")
-
-      // Handle infinity context length
-      const contextLengthValue = contextLength === -1 ? 1000000 : contextLength
 
       // Create the Flowdown model file contents (plist structured XML)
       const fdmodelContent = `<?xml version="1.0" encoding="UTF-8"?>
@@ -123,7 +120,7 @@ ${capabilities.map((cap) => `		<string>${cap}</string>`).join("\n")}
 	<key>comment</key>
 	<string></string>
 	<key>context</key>
-	<integer>${contextLengthValue}</integer>
+	<integer>${contextLength}</integer>
 	<key>creation</key>
 	<date>${currentDate}</date>
 	<key>endpoint</key>
